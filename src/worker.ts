@@ -13,12 +13,11 @@ if (!WebAssembly.instantiateStreaming) {
 //@ts-ignore
 const go = new Go(); // Defined in wasm_exec.js. Don't forget to add this in your index.html.
 
-
 declare function sim(): string;
+declare function simcalc(): string;
 declare function debug(): string;
-declare function setcfg(
-  content: string
-): string;
+declare function debugcalc(): string;
+declare function setcfg(content: string): string;
 
 let inst: WebAssembly.Instance;
 WebAssembly.instantiateStreaming(fetch("/main.wasm"), go.importObject)
@@ -26,7 +25,7 @@ WebAssembly.instantiateStreaming(fetch("/main.wasm"), go.importObject)
     inst = result.instance;
     go.run(inst);
     // console.log("worker loaded ok");
-    postMessage("ready")
+    postMessage("ready");
   })
   .catch((err) => {
     console.error(err);
@@ -36,15 +35,23 @@ onmessage = async (ev) => {
   // console.log(ev.data);
   switch (ev.data) {
     case "run":
-      const simres = sim()
-      postMessage(simres)
+      const simres = sim();
+      postMessage(simres);
+      break;
+    case "runcalc":
+      const calcres = simcalc();
+      postMessage(calcres);
+      break;
+    case "debugcalc":
+      const dc = debugcalc();
+      postMessage(dc);
       break;
     case "debug":
-      const d = debug()
-      postMessage(d)
+      const d = debug();
+      postMessage(d);
       break;
     default:
-      const ok = setcfg(ev.data)
-      console.log("done setting config: " +  ok)
+      const ok = setcfg(ev.data);
+      console.log("done setting config: " + ok);
   }
 };

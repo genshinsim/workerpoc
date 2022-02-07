@@ -107,13 +107,18 @@ function Dash({ pool, maxWorker } : { pool : WorkerPool, maxWorker: number }) {
   const [result, setResult] = React.useState<number>(-1);
   const [progress, setProgress] = React.useState<number>(-1);
   const [runtime, setRuntime] = React.useState<number>(-1)
+  const [calcMode, setCalcMode] = React.useState<boolean>(false);
+  const [errMsg, setErrMsg] = React.useState<string>("")
 
   const runThreaded = () => {
     setResult(-1);
+    setRuntime(-1)
     console.log("start running threaded");
     let queued = 0;
     let done = 0;
     let avg = 0;
+    const runcmd = calcMode ? "runcalc" : "run"
+    const dbgcmd = calcMode ? "debugcalc" : "debug"
     const startTime = window.performance.now();
     console.time("sim");
     //set config first
@@ -155,23 +160,27 @@ function Dash({ pool, maxWorker } : { pool : WorkerPool, maxWorker: number }) {
       if (queued < iters) {
         //queue another worker
         queued++;
-        pool.queue({ cmd: "run", cb: cbFunc });
+        pool.queue({ cmd: runcmd, cb: cbFunc });
       }
       //otherwise do nothing
     };
     const debugCB = (val: any) => {
       const res = JSON.parse(val);
+      if (res.err) {
+        setErrMsg(res.err)
+        return;
+      }
       console.log("finish debug run: ", res);
     };
     //queue up a debug run first
-    pool.queue({ cmd: "debug", cb: debugCB });
+    pool.queue({ cmd: dbgcmd, cb: debugCB });
     //queue up to number of workers - 1 (for debug)
     let count = workers - 1;
     if (count > iters) {
       count = iters;
     }
     for (; queued < count; queued++) {
-      pool.queue({ cmd: "run", cb: cbFunc });
+      pool.queue({ cmd: runcmd, cb: cbFunc });
     }
   };
   return (
@@ -211,11 +220,12 @@ function Dash({ pool, maxWorker } : { pool : WorkerPool, maxWorker: number }) {
         }}
       />
       <br />
+      Calc mode: <input type="checkbox" checked={calcMode} onChange={() => {setCalcMode(!calcMode)}} />
       <br />
       <button onClick={runThreaded}>run</button>
       <br />
-      {progress !== -1 ? <p>Running... progress: {progress * 5} %</p> : null}
-      {result !== -1 ? <p>Run completed in {runtime}ms. Average dps: {result}</p> : null}
+      {progress !== -1 && errMsg === "" ? <p>Running... progress: {progress * 5} %</p> : null}
+      {errMsg === "" ?  result !== -1 ? <p>Run completed in {runtime}ms. Average dps: {result}</p> : null : <p>Error encountered: {errMsg}</p>}
     </div>
   );
 }
